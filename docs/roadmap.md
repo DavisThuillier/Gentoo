@@ -117,8 +117,11 @@ Package skeleton, schema, migrations, model types.
 - Model types round-trip through GRDB, including nullable and enum-backed columns
 - The core package imports neither SwiftUI nor AppKit, enforced by a test or build setting
 
-**Note:** §16 question 9 (shuffle as in-place reorder vs. play-order overlay) may add a
-table or column. Check its schema impact here rather than migrating for it later.
+**Note:** §16 question 9 (shuffle as in-place reorder vs. play-order overlay) is **resolved**
+— play-order overlay, per [ADR 0011](adr/0011-shuffle-as-a-play-order-overlay.md). Its schema
+impact is `queue_items.shuffle_position` plus `shuffle_enabled` and `repeat_mode` on `queues`,
+and it is carried by the initial migration rather than migrated for later. The feature itself
+is still M9.
 
 ## M1 — Identity and grouping
 
@@ -259,7 +262,9 @@ The `LazyVGrid` vs. `NSCollectionView` decision (§12) is made at D2, not here.
 - Queues and collections are unaffected by the active sublibrary
 - Tag editing UI over the M2 write path, single and batch, with divergence surfaced
 
-**Blocked on §16:** playlist import (4), shuffle and repeat semantics (9).
+**Blocked on §16:** playlist import (4). Shuffle and repeat semantics (9) are resolved —
+see [ADR 0011](adr/0011-shuffle-as-a-play-order-overlay.md); the schema landed at M0 and
+only the feature remains.
 
 ---
 
@@ -268,8 +273,10 @@ The `LazyVGrid` vs. `NSCollectionView` decision (§12) is made at D2, not here.
 Nine of §16's eleven questions block a specific milestone, listed above. They are tracked
 as issues so the answers get made and recorded rather than defaulted into an implementation.
 
-**Answer them before the milestone they block**, not during it. Question 9 in particular
-should be checked for schema impact at M0, even though it is not implemented until M9.
+**Answer them before the milestone they block**, not during it. Question 9 was the one that
+had to be answered early regardless of when it ships — an overlay costs a column that an
+in-place shuffle does not, and `queue_items` is created at M0. It is now resolved
+([ADR 0011](adr/0011-shuffle-as-a-play-order-overlay.md)), leaving eight.
 
 Five of them — 3, 6, 7, 8, and 10 — are design questions and are resolved by Track D as a
 byproduct of work that has to happen anyway.

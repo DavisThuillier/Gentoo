@@ -21,6 +21,7 @@ relitigated, and so the reasoning survives beyond the memory of whoever made the
 | [0008](0008-core-first-swiftpm-package.md) | Build the testable core as a SwiftPM package first | Accepted |
 | [0009](0009-squash-merged-pull-requests-on-linear-main.md) | Land work on main via squash-merged pull requests | Accepted |
 | [0010](0010-defer-release-branches.md) | Defer release and integration branches | Accepted |
+| [0011](0011-shuffle-as-a-play-order-overlay.md) | Shuffle as a play-order overlay, not an in-place reorder | Accepted |
 
 ## Format
 

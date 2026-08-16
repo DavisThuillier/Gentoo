@@ -254,18 +254,24 @@ CREATE TABLE collection_items (
 );
 
 CREATE TABLE queues (
-  id          INTEGER PRIMARY KEY,
-  name        TEXT NOT NULL,
-  is_active   INTEGER NOT NULL DEFAULT 0,
-  created_at  INTEGER NOT NULL
+  id                INTEGER PRIMARY KEY,
+  name              TEXT NOT NULL,
+  is_active         INTEGER NOT NULL DEFAULT 0,
+  shuffle_enabled   INTEGER NOT NULL DEFAULT 0,
+  repeat_mode       TEXT NOT NULL DEFAULT 'off',  -- off | all | one
+  created_at        INTEGER NOT NULL
 );
 
 CREATE TABLE queue_items (
-  queue_id   INTEGER NOT NULL REFERENCES queues(id) ON DELETE CASCADE,
-  track_id   INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
-  position   INTEGER NOT NULL,
+  queue_id          INTEGER NOT NULL REFERENCES queues(id) ON DELETE CASCADE,
+  track_id          INTEGER NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+  position          INTEGER NOT NULL,   -- authored order, never mutated by shuffle
+  shuffle_position  INTEGER,            -- play order when shuffled, see §8
   PRIMARY KEY (queue_id, position)
 );
+-- NULLs are distinct in a SQLite unique index, so this constrains the shuffled
+-- order without needing a partial index for the unshuffled case.
+CREATE UNIQUE INDEX idx_queue_items_shuffle ON queue_items(queue_id, shuffle_position);
 
 CREATE TABLE play_history (
   id         INTEGER PRIMARY KEY,
@@ -417,6 +423,38 @@ position without auto-playing.
 
 `position` is an integer with gaps (increments of 1024) so reorders are single-row updates
 rather than renumbering the whole queue.
+
+### Shuffle and repeat
+
+**Shuffle is a play-order overlay, not a reorder.** `position` is the authored order and is
+never mutated by shuffling. `shuffle_position` carries the shuffled order, using the same
+gaps-of-1024 convention so insertions into it are also single-row updates. See
+[ADR 0011](adr/0011-shuffle-as-a-play-order-overlay.md).
+
+Shuffle and repeat are **per-queue state**, stored on the `queues` row and persisted with
+it. Each named queue remembers its own; switching the active queue does not carry them over.
+
+- **Enabling shuffle** assigns `shuffle_position` across the queue's items. The currently
+  playing track takes the first slot and keeps playing — toggling shuffle never interrupts
+  playback, restarts a track, or changes what is playing now.
+- **Disabling shuffle** clears `shuffle_position` and playback resumes following `position`
+  from wherever the current track sits in it.
+- **Enabling shuffle again** generates a fresh order. It does not restore a previous one.
+- **Play next** inserts immediately after the currently playing item in whichever order is
+  active, and takes a `position` in the authored order as well.
+- **Add to end** appends to the end of both orders.
+- Removing an item and clearing the queue behave identically in both orders.
+
+`repeat_mode` is `off`, `all`, or `one`, and applies to the active play order:
+
+| Mode | At the end of the play order |
+|---|---|
+| `off` | Playback stops |
+| `all` | Wraps to the first item |
+| `one` | The current item repeats; advancing manually still moves to the next item |
+
+Restoring a queue on launch restores its shuffled order, not just the fact that shuffle was
+on — the queue comes back exactly as it was left.
 
 ---
 
@@ -597,7 +635,11 @@ Scanning must never block the UI. Show progress; keep the library usable during 
 6. **Mini player / menu bar item** — in scope?
 7. **Keyboard shortcuts** — full set, or media keys only?
 8. **First-run onboarding** — how are watched folders configured initially?
-9. **Shuffle and repeat semantics** — shuffle the queue in place, or a play-order overlay?
+9. ~~**Shuffle and repeat semantics** — shuffle the queue in place, or a play-order
+   overlay?~~ **Resolved:** play-order overlay, with shuffle and repeat as per-queue
+   persisted state. Specified in §8, recorded in
+   [ADR 0011](adr/0011-shuffle-as-a-play-order-overlay.md). Numbering is left intact so
+   existing references still resolve.
 10. **Sort defaults per view**, and are they persisted per-view?
 11. **Backup/export** for database-only data (ratings, play counts, collections, queues).
 
