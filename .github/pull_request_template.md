@@ -27,5 +27,5 @@ state which §15 budget it affects and what was measured — not what was assume
 - [ ] Schema changes ship with a versioned migration in this PR
 - [ ] New library queries thread the sublibrary predicate
 - [ ] No rule value is string-interpolated into SQL
-- [ ] Core package imports no SwiftUI or AppKit
+- [ ] Core package imports no SwiftUI or AppKit (`Scripts/check-no-ui-imports.sh`)
 - [ ] `audio_hash` is unchanged by any tag-write path touched here

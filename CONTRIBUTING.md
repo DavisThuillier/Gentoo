@@ -85,7 +85,8 @@ branches are deferred — including the condition that should trigger revisiting
 - Schema changes ship with a versioned migration **in the same commit**
 - New library queries thread the sublibrary predicate
 - No rule value is string-interpolated into SQL
-- The core package imports neither SwiftUI nor AppKit
+- The core package imports neither SwiftUI nor AppKit — `Scripts/check-no-ui-imports.sh`
+  checks this, and CI runs the same script
 - `audio_hash` is unchanged by any tag-write path touched
 - Performance-relevant changes state what was **measured**, not assumed
 
