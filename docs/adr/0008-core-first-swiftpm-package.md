@@ -10,13 +10,19 @@ Spec §17 calls for a single Xcode project with two targets — app and XPC serv
 shared framework for models and the rules engine. It also requires that the rules engine,
 scanner, and identity hashing be unit-testable without a UI.
 
-Producing a `.app` bundle with an embedded XPC service, entitlements, App Sandbox, and
-codesigning requires a full Xcode installation. Profiling against the §15 performance
-budget requires Instruments, which also ships with Xcode.
+Xcode provides two things this project cannot practically do without: **SwiftUI Previews**,
+which is the iteration loop for priority #1, and **Instruments**, without which §15's seven
+numeric targets cannot be verified at all.
+
+It provides them as tooling, not as capability. The Command Line Tools SDK contains
+`SwiftUI.framework` and `AppKit.framework` with their `.swiftinterface` files, `codesign`
+lives at `/usr/bin/codesign`, and `notarytool` ships with CLT — so compiling, signing,
+entitling, and notarizing a macOS GUI application are all possible without Xcode. A `.app`
+is a directory with an `Info.plist`; SwiftPM will not emit one, but a script will.
 
 The bulk of the load-bearing logic — schema and migrations, rule compilation, `audio_hash`
-computation, album grouping — needs none of that. It is pure Swift over SQLite and file
-bytes.
+computation, album grouping — needs neither Xcode nor a UI framework. It is pure Swift over
+SQLite and file bytes.
 
 ## Decision
 
@@ -38,9 +44,12 @@ belongs in the app target.
   likewise enforced by the module boundary.
 - `swift test` is fast and scriptable in CI without a macOS runner carrying a full Xcode
   image, though a macOS runner is still eventually needed for the app targets.
-- Xcode 26.x is still required before the app, XPC service, App Sandbox, security-scoped
-  bookmarks, or any Instruments profiling can happen. The toolchain must match the
-  installed Swift version to avoid skew.
+- Xcode 26.x is needed before the app target, XPC service, SwiftUI Previews, or Instruments
+  profiling. The toolchain must match the installed Swift version to avoid skew.
+- **This does not defer UI work to the end.** Design decisions need no Xcode at all, and a
+  UI prototype over synthetic data needs Xcode but nothing from this package — notably, the
+  §12 `LazyVGrid` vs. `NSCollectionView` measurement depends on render density and image
+  decode cost, not on real metadata. See `docs/roadmap.md`, Track D.
 - The package boundary must be drawn correctly on the first pass. Moving a type across it
   later is cheap; discovering that the boundary is in the wrong place is not.
 
@@ -55,6 +64,17 @@ rather than a constraint the compiler enforces.
 Rejected because nothing then prevents the scanner or rules engine from acquiring a UI
 dependency, and §17 requires that they not have one.
 
-**Build the core as a package and never adopt Xcode.** SwiftPM alone cannot produce a
-`.app` bundle with an embedded XPC service, handle entitlements and codesigning, or provide
-Instruments. Not viable for this product.
+**Build the core as a package and never adopt Xcode.** Genuinely possible — the CLT SDK
+compiles SwiftUI and AppKit, and `codesign` and `notarytool` handle entitlements, signing,
+and notarization. Bundle assembly would be a shell script.
+
+Rejected on cost rather than capability. It forfeits SwiftUI Previews, which is the
+iteration loop for priority #1, and Instruments, without which §15's targets cannot be
+verified. It also means maintaining a hand-rolled bundle-sign-notarize pipeline, which runs
+against priority #3. Being off the supported path makes every future toolchain change the
+project's problem rather than Apple's.
+
+*(An earlier revision of this record claimed SwiftPM "cannot handle entitlements and
+codesigning." That was factually wrong — `codesign` does both and ships with the Command
+Line Tools. The decision is unchanged; the reasoning is corrected. Recorded here rather
+than silently edited.)*

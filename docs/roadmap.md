@@ -35,13 +35,21 @@ scale before any UI work begins.
 
 ## Track D — Design (parallel, starts immediately)
 
-**UI polish is priority #1, and design has no dependency on any milestone.** It therefore
-runs alongside M0–M5 rather than waiting for M8, which is where the *implementation* of the
-UI sits.
+**UI polish is priority #1, and it has almost no dependency on the milestone chain.**
+Treating "UI" as one indivisible block that lands at M8 was wrong: it has three distinct
+dependency profiles, and only the last of them belongs at M8.
 
-Design work requires no Xcode. Layout, grid density, artwork treatment, typography,
-spacing, states, and interaction flows are settled in a design tool and recorded in
-`docs/design/`. Only SwiftUI implementation needs Xcode Previews.
+| Stage | Needs | When |
+|---|---|---|
+| **D1** Design decisions | nothing | now |
+| **D2** Prototype on synthetic data | Xcode only | as soon as Xcode is installed |
+| **D3** Real-data views | M0, M1, M4 | parallel with M5 |
+| **M8** Complete, polished app | D1–D3, M6, M7 | M8 |
+
+### D1 — Design decisions (no Xcode)
+
+Layout, grid density, artwork treatment, typography, spacing, states, and interaction flows,
+settled in a design tool and recorded in `docs/design/`.
 
 **Deliverable:** `docs/design/` — a component inventory, layout decisions with rationale,
 the artwork and placeholder treatment, and the state matrix (empty, scanning, missing file,
@@ -57,14 +65,43 @@ no artwork, no search results).
 - Thumb, medium, and full artwork sizes are chosen against real layouts, so §11's cache
   sizes are driven by the design rather than guessed
 
-**This track answers five open questions.** Ratings UI (§16.3), mini player (§16.6),
-keyboard shortcuts (§16.7), sort defaults (§16.10), and first-run onboarding (§16.8) are
-design questions, not engineering ones. Resolving them here removes them as blockers on M7
-and M8 rather than leaving them to be defaulted into an implementation.
+**D1 answers five open questions.** Ratings UI (§16.3), mini player (§16.6), keyboard
+shortcuts (§16.7), sort defaults (§16.10), and first-run onboarding (§16.8) are design
+questions, not engineering ones. Resolving them here removes them as blockers on M7 and M8
+rather than leaving them to be defaulted into an implementation.
 
-**Feeding M8.** M8 should begin with the design settled, not with a blank canvas. The
-`LazyVGrid` vs. `NSCollectionView` decision (§12) stays an engineering call made on
-measurement — design determines what is drawn, measurement determines how.
+### D2 — Prototype on synthetic data (Xcode, no core dependency)
+
+A throwaway SwiftUI target rendering ~50,000 fabricated albums with generated placeholder
+images. No database, no scanner, no dependency on the core package. Real Swift, real
+Previews, real scrolling.
+
+**This is where the §12 grid decision gets settled.** The spec says to measure before
+choosing between `LazyVGrid` and `NSCollectionView` — and that measurement depends on
+render density and image decode cost, **not on whether the metadata is real.** It therefore
+has no dependency on M0–M5 and should happen as early as Xcode allows. It is the cheapest
+available test of priority #2, and it also answers whether SwiftUI can express the D1
+design at all, which mockups cannot.
+
+Lives in `Prototypes/`, tracked but explicitly non-shipping. It does not violate
+[ADR 0008](adr/0008-core-first-swiftpm-package.md)'s no-UI-in-core rule, since it is not the
+core package. Components are harvested into M8 rather than rewritten.
+
+**Exit criteria**
+- Album grid measured in Instruments at 50k scale; 60fps sustained, or `NSCollectionView`
+  chosen on evidence
+- The §12 grid decision is recorded as an ADR, with the numbers
+- The D1 design is proven expressible in SwiftUI, or D1 is revised where it is not
+- Thumb, medium, and full artwork sizes confirmed against real rendering
+
+### D3 — Real-data views (needs M0, M1, M4)
+
+Browse views over an actual library: schema, album grouping, and browse queries. **It needs
+neither playback (M6) nor FSEvents scanning (M7)** — a library populated by the M5 generator
+is enough — so it runs parallel with M5 rather than waiting for M7.
+
+**Feeding M8.** M8 begins with the design settled, the grid decision made on measurement,
+and components already proven against real data — not with a blank canvas.
 
 ---
 
@@ -199,14 +236,19 @@ Security-scoped bookmarks, FSEvents, and the artwork pipeline.
 
 Album grid, artist and genre views, album detail, search results, now-playing bar.
 
+Begins from D1's settled design, D2's grid decision, and D3's components — not from scratch.
+
 **Exit criteria**
-- Grid holds 60fps sustained on the 50k library, **measured in Instruments**
-- The `LazyVGrid` vs. `NSCollectionView` decision is made on measurement and recorded (§12)
+- Grid holds 60fps sustained on the real 50k library, confirming D2's measurement against
+  live data, artwork cache, and sublibrary predicate
 - Search results use `NSTableView`; frame rate holds at tens of thousands of rows
 - Sublibrary switching updates the full UI within 100ms
 - Cold launch to interactive under 1s; idle memory under 400MB
 
-**Blocked on §16:** ratings UI (3), mini player (6), keyboard shortcuts (7), sort defaults (10).
+**Blocked on §16:** ratings UI (3), mini player (6), keyboard shortcuts (7), sort defaults
+(10) — all resolved by D1, so this milestone should start unblocked.
+
+The `LazyVGrid` vs. `NSCollectionView` decision (§12) is made at D2, not here.
 
 ## M9 — Queues, collections, tag editing
 
