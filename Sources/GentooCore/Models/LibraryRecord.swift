@@ -29,7 +29,11 @@ import GRDB
 /// armed for whoever adds the next property with an acronym in it. Explicit keys remove the
 /// class of bug rather than the instance, and they make the mapping to §5 greppable.
 ///
-/// `ModelRoundTripTests` holds every record to this, in both directions.
+/// `ModelRoundTripTests` holds every record to this, in both directions. The assertion that
+/// catches a regression is `fullyPopulatedRecordsRoundTrip` specifically — comparing a decoded
+/// optional against a value that was *not* nil. Neither the bare round trip nor the
+/// column-mapping check sees it: the first compares nil against nil, and the second passes
+/// because the asymmetry is decode-only.
 ///
 public protocol LibraryRecord: Codable, FetchableRecord, EncodableRecord, TableRecord, Sendable {}
 

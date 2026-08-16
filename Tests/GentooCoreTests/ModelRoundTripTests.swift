@@ -82,6 +82,16 @@ struct ModelRoundTripTests {
     @Test("Every record round-trips with every column populated")
     func fullyPopulatedRecordsRoundTrip() throws {
         try TestDatabase.withMigratedDatabase { db in
+            // **This is the test that catches the CodingKeys asymmetry** documented on
+            // `LibraryRecord`, and the only one that can. A mismatched key on an optional
+            // decodes silently to nil, so it is caught by comparing against a value that was
+            // not nil — which happens only here.
+            //
+            // Do not delete this as redundant with the bare round trip plus the column-mapping
+            // check. Neither sees it: the bare trip compares nil against nil, and the mapping
+            // check passes because the asymmetry is decode-only, with the encode side correct.
+            // Removing it would let the next acronym-bearing optional decode to nil with a
+            // green suite.
             var root = Root(
                 path: "/Volumes/Music/\(NonASCII.artist)",
                 bookmark: Data([0xDE, 0xAD, 0xBE, 0xEF]),
@@ -132,7 +142,11 @@ struct ModelRoundTripTests {
                 bitrate: 1_411,
                 durationMs: 303_000,
                 scanState: .error,
-                scanError: "STREAMINFO MD5 was zeroed",
+                // A real error state. Deliberately not "STREAMINFO MD5 was zeroed": §6 makes
+                // that a *fallback* to hashing frame bytes, not a failure, and #8 implements
+                // exactly that path. This fixture is the first example an M1 implementer
+                // reads, so it should not model a recoverable condition as an error.
+                scanError: "read failed: Input/output error",
                 lastSeenAt: 1_700_000_000
             )
             try file.insert(db)
@@ -212,10 +226,16 @@ struct ModelRoundTripTests {
     @Test("Every record round-trips with every nullable column left nil")
     func minimalRecordsRoundTrip() throws {
         try TestDatabase.withMigratedDatabase { db in
-            // The other half of the round trip, and the half that caught the CodingKeys
-            // asymmetry documented on `LibraryRecord`: a mismatched key throws on a
-            // non-optional property but decodes silently to nil on an optional one, so a
-            // record only ever tested fully populated hides the failure entirely.
+            // The other half of the round trip. It catches a non-optional Swift property
+            // sitting over a nullable column — that decodes fine right up until it meets a
+            // real library, where a file with no title is entirely normal.
+            //
+            // **It does not catch the CodingKeys asymmetry** documented on `LibraryRecord`,
+            // and cannot: every optional here is nil going in, so a key that decodes to
+            // nothing still compares equal to the nil that was expected. Only
+            // `fullyPopulatedRecordsRoundTrip` catches that. Verified by reproducing the bug —
+            // restoring the strategies on `Album` fails the populated test alone, while this
+            // one and the column-mapping check both pass.
             //
             // Every record is here, including the four whose only optional is `id`. Covering
             // just the ones that currently have optionals would be enough today and would
