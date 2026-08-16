@@ -72,8 +72,13 @@ Branches land via **squash-merged pull request**. Commits on a branch may be mes
 are squashed away. The **PR title becomes the commit subject on `main`**, so it must itself
 be a valid Conventional Commit. CI enforces this.
 
-`main` stays linear. No merge commits, no direct pushes for anything beyond repository
-housekeeping.
+`main` stays linear. No merge commits, no force pushes, no direct pushes — GitHub rulesets
+enforce this, and the bypass list is empty.
+
+There is no `develop` branch and there are no `release/*` branches. `main` is the trunk and
+releases are tagged on it. See [ADR 0009](docs/adr/0009-squash-merged-pull-requests-on-linear-main.md)
+for the merge model and [ADR 0010](docs/adr/0010-defer-release-branches.md) for why release
+branches are deferred — including the condition that should trigger revisiting it.
 
 ## Before opening a PR
 

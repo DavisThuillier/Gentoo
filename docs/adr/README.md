@@ -19,6 +19,8 @@ relitigated, and so the reasoning survives beyond the memory of whoever made the
 | [0006](0006-rules-engine-as-standalone-component.md) | Rules engine as a standalone, uncoupled component | Accepted |
 | [0007](0007-tag-edits-write-to-all-backing-files.md) | Tag edits write to every backing file, atomically | Accepted |
 | [0008](0008-core-first-swiftpm-package.md) | Build the testable core as a SwiftPM package first | Accepted |
+| [0009](0009-squash-merged-pull-requests-on-linear-main.md) | Land work on main via squash-merged pull requests | Accepted |
+| [0010](0010-defer-release-branches.md) | Defer release and integration branches | Accepted |
 
 ## Format
 
