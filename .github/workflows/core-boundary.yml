@@ -1,0 +1,22 @@
+name: Core boundary
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  no-ui-imports:
+    name: Core package imports no UI framework
+    # No Swift toolchain needed — this reads source, it does not build it, so it
+    # does not need the macOS runner the app targets will eventually require.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The same script a developer runs locally, so the two gates cannot drift.
+      - name: Check for SwiftUI and AppKit imports under Sources/
+        run: Scripts/check-no-ui-imports.sh
