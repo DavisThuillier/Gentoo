@@ -1,0 +1,28 @@
+name: Commit conventions
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    name: PR title is a valid Conventional Commit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The PR title becomes the commit subject on main under squash merge,
+      # so it is the thing that actually has to be valid.
+      #
+      # The title is passed through the environment rather than interpolated
+      # into the script: it is attacker-controlled text, and `run:` blocks
+      # substitute before the shell parses.
+      - name: Validate PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          printf '%s\n' "$PR_TITLE" > "$RUNNER_TEMP/pr-title.txt"
+          .githooks/commit-msg "$RUNNER_TEMP/pr-title.txt"

@@ -1,0 +1,73 @@
+#!/bin/sh
+###
+### commit-msg — validate Conventional Commits
+###
+### Enable locally with:
+###     git config core.hooksPath .githooks
+###
+### CI reuses this exact script to validate PR titles, so the local gate and
+### the remote gate can never drift apart. See .github/workflows/commit-lint.yml.
+###
+
+set -eu
+
+MSG_FILE="$1"
+
+###
+### Configuration
+###
+
+TYPES='feat|fix|perf|refactor|docs|test|build|ci|chore|revert'
+SCOPES='library|scanner|identity|playback|xpc|rules|queue|collections|artwork|ui|search|tags|db|build|adr|claude|deps|release'
+MAX_SUBJECT=72
+
+###
+### Extract the subject: first non-blank, non-comment line
+###
+
+SUBJECT=$(grep -v '^#' "$MSG_FILE" | sed '/^[[:space:]]*$/d' | head -n 1 || true)
+
+###
+### Exemptions — git generates these, and rebase consumes the fixups
+###
+
+case "$SUBJECT" in
+    "Merge "* | "Revert "* | "fixup!"* | "squash!"* | "amend!"*)
+        exit 0
+        ;;
+esac
+
+###
+### Reporting
+###
+
+fail() {
+    printf '\n  commit-msg: %s\n\n' "$1" >&2
+    printf '  got:      %s\n\n' "$SUBJECT" >&2
+    printf '  expected: <type>(<scope>): <subject>\n\n' >&2
+    printf '  types:    %s\n\n' "$(printf '%s' "$TYPES" | tr '|' ' ')" >&2
+    printf '  scopes:   %s\n\n' "$(printf '%s' "$SCOPES" | tr '|' ' ')" >&2
+    printf '  Subject: imperative mood, no trailing period, %s characters or fewer.\n' "$MAX_SUBJECT" >&2
+    printf '  Breaking: <type>(<scope>)!: <subject> plus a BREAKING CHANGE: footer.\n' >&2
+    printf '  Scope is optional but preferred. See CONTRIBUTING.md.\n\n' >&2
+    printf '  Emergency bypass: git commit --no-verify\n\n' >&2
+    exit 1
+}
+
+###
+### Validation
+###
+
+[ -n "$SUBJECT" ] || fail "commit message is empty"
+
+printf '%s' "$SUBJECT" | grep -Eq "^($TYPES)(\(($SCOPES)\))?!?: .+" \
+    || fail "subject does not match <type>(<scope>): <subject>, or the scope is not recognized"
+
+case "$SUBJECT" in
+    *.) fail "subject must not end with a period" ;;
+esac
+
+[ "${#SUBJECT}" -le "$MAX_SUBJECT" ] \
+    || fail "subject is ${#SUBJECT} characters (limit $MAX_SUBJECT)"
+
+exit 0
