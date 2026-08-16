@@ -208,10 +208,13 @@ Delegate to these rather than reviewing their domain ad hoc:
 
 ## Open questions
 
-§16 lists eleven unresolved product questions: ReplayGain, crossfade, ratings/play-count UI,
-playlist import, output device selection, mini player, keyboard shortcuts, first-run
-onboarding, shuffle and repeat semantics, sort defaults, and backup/export for
-database-only data.
+§16 lists eleven product questions, ten of them still open: ReplayGain, crossfade,
+ratings/play-count UI, playlist import, output device selection, mini player, keyboard
+shortcuts, first-run onboarding, sort defaults, and backup/export for database-only data.
+
+Question 9, shuffle and repeat semantics, is resolved — a play-order overlay with per-queue
+state ([ADR 0011](docs/adr/0011-shuffle-as-a-play-order-overlay.md), §8). §16's numbering is
+kept intact so existing references still resolve.
 
 **Do not resolve these unilaterally.** Raise the question, get an answer, record it in the
 spec, then implement.
