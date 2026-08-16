@@ -12,14 +12,16 @@ behavior it defines, and cite it in the commit body.
 
 ## Status
 
-Pre-implementation. The repository holds the spec, ADRs, and tooling.
+M0. The `GentooCore` package builds and `swift test` runs green; the schema, migrations,
+and model types are not in place yet. There is no app target and nothing runnable.
 
 The build is sequenced **core-first** ([ADR 0008](docs/adr/0008-core-first-swiftpm-package.md)):
 the shared framework ships as a standalone SwiftPM package, testable with the Command Line
 Tools alone. The Xcode project consuming it is added once that core is proven.
 
 Xcode 26.x is required before the app target, XPC service, App Sandbox, security-scoped
-bookmarks, or any Instruments profiling. It is not yet installed on this machine.
+bookmarks, or any Instruments profiling. Nothing up to that point needs it — M0–M5 build
+and test with the Command Line Tools alone, which is the whole point of the sequencing.
 
 ## Commands
 
