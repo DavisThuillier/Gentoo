@@ -7,8 +7,10 @@ structure is irregular and metadata is the only reliable organizing principle. E
 the interface shows — albums, artists, genres, duplicate detection — is derived from tags
 and audio content, never from where a file happens to sit on disk.
 
-> **Status: pre-implementation.** The repository currently holds the specification,
-> architecture decision records, and project tooling. No application code yet.
+> **Status: early development.** The specification and architecture decision records are
+> settled, and the shared core package builds and tests. There is no runnable application
+> yet — the app and XPC service targets come later, by design
+> ([ADR 0008](docs/adr/0008-core-first-swiftpm-package.md)).
 
 ## Design
 
