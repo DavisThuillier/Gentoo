@@ -98,6 +98,27 @@ the index in [docs/adr/README.md](docs/adr/README.md).
 Records are immutable once accepted. To change a decision, write a new record that
 supersedes the old one and update the old record's status — do not edit the original.
 
+### Numbering across concurrent branches
+
+Two branches can both claim the next number. This is expected, cheap to fix, and
+**self-announcing** — you will not merge a collision by accident:
+
+- Every ADR adds a row to the index table in `docs/adr/README.md`. Two concurrent records
+  both touch it, so git raises a conflict.
+- The ruleset requires branches be up to date before merging, so the conflict surfaces
+  *before* the merge, not after.
+
+**Protocol: the second branch to merge renumbers.** Rename the file, update its internal
+cross-references, and fix the index row. It takes a minute and the collision cannot reach
+`main`.
+
+Numbers are never reused, even for a record that was drafted and abandoned.
+
+Numbering stays sequential rather than date-based or issue-derived. Sequential numbers are
+readable, sort correctly, and make cross-references short — `[0004]` rather than
+`[2026-08-16-identity]`. That's worth more than eliminating a collision that announces
+itself and takes a minute to resolve.
+
 Several alternatives are already settled and recorded so they are not relitigated; they are
 listed in [CLAUDE.md](CLAUDE.md). Reopening one is legitimate, but it requires stating what
 new information changes the analysis, and a superseding ADR.
