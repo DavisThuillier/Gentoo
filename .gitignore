@@ -1,0 +1,68 @@
+###
+### macOS
+###
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+###
+### Xcode — user state
+###
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+###
+### Xcode — build products
+###
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+###
+### Swift Package Manager
+###
+.build/
+.swiftpm/
+Packages/
+# Package.resolved IS committed. This is an application, not a library —
+# dependency versions must be pinned for reproducible builds.
+
+###
+### Signing and secrets — never commit
+###
+*.p12
+*.cer
+*.certSigningRequest
+*.provisionprofile
+*.mobileprovision
+ExportOptions.plist
+.env
+.env.*
+
+###
+### Local runtime artifacts
+###
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+###
+### Claude Code — personal, machine-local
+###
+# Agent definitions, project instructions, and shared settings ARE committed.
+# Only per-machine state is excluded.
+.claude/settings.local.json
+.claude/todos/
+CLAUDE.local.md

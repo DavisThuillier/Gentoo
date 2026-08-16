@@ -1,0 +1,35 @@
+###
+### Line endings
+###
+* text=auto eol=lf
+
+###
+### Xcode — union merge on the project file reduces (but never eliminates)
+### conflict pain on concurrent target edits.
+###
+*.pbxproj      text eol=lf merge=union
+*.xcscheme     text eol=lf
+*.xcworkspacedata text eol=lf
+*.plist        text eol=lf
+*.entitlements text eol=lf
+
+###
+### Swift
+###
+*.swift        text eol=lf diff=swift
+
+###
+### Binary — test fixtures and artwork must never be normalized
+###
+*.mp3   binary
+*.flac  binary
+*.wav   binary
+*.m4a   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+
+###
+### Generated — excluded from language statistics and collapsed in diffs
+###
+Package.resolved linguist-generated=true
