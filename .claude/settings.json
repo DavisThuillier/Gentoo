@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Bash(swift build:*)",
+      "Bash(swift test:*)",
+      "Bash(swift package describe:*)",
+      "Bash(swift package show-dependencies:*)",
+      "Bash(xcodebuild -list:*)",
+      "Bash(xcodebuild -showsdks:*)",
+      "Bash(xcodebuild -version:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git blame:*)",
+      "Bash(git stash list:*)",
+      "Bash(sqlite3 :memory::*)"
+    ],
+    "deny": [
+      "Read(./**/*.p12)",
+      "Read(./**/*.provisionprofile)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)"
+    ]
+  }
+}
