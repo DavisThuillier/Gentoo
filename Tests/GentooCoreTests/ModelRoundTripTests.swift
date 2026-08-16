@@ -39,28 +39,40 @@ struct ModelRoundTripTests {
 
     @Test("Every record encodes exactly its table's columns")
     func recordColumnsMatchTables() throws {
-        let problems = try TestDatabase.withMigratedDatabase { db -> [String] in
+        let (problems, covered, tables) = try TestDatabase.withMigratedDatabase {
+            db -> ([String], Set<String>, Set<String>) in
             // Compared against the migrated database rather than against a second
             // transcription of §5: the migration is already held to §5 by InitialSchemaTests,
             // so matching the built table matches the spec, transitively and without a third
             // copy of the column list to keep in sync.
-            try [
-                mismatch(Root(path: "/Music"), db),
-                mismatch(File(rootID: 1, path: "/a.flac", size: 1, mtime: 1, format: .flac, lastSeenAt: 0), db),
-                mismatch(Track(audioHash: "h", addedAt: 0), db),
-                mismatch(Album(albumKey: "k"), db),
-                mismatch(Artist(name: "n"), db),
-                mismatch(Artwork(sha256: "s", source: .embedded), db),
-                mismatch(Sublibrary(name: "n", ruleJSON: "{}", position: 0, createdAt: 0), db),
-                mismatch(TrackCollection(name: "n", createdAt: 0), db),
-                mismatch(CollectionItem(collectionID: 1, trackID: 1, position: 1024), db),
-                mismatch(Queue(name: "n", createdAt: 0), db),
-                mismatch(QueueItem(queueID: 1, trackID: 1, position: 1024), db),
-                mismatch(PlayHistory(trackID: 1, playedAt: 0, msPlayed: 0, completed: true), db),
-            ].compactMap { $0 }
+            let checks = try [
+                check(Root(path: "/Music"), db),
+                check(File(rootID: 1, path: "/a.flac", size: 1, mtime: 1, format: .flac, lastSeenAt: 0), db),
+                check(Track(audioHash: "h", addedAt: 0), db),
+                check(Album(albumKey: "k"), db),
+                check(Artist(name: "n"), db),
+                check(Artwork(sha256: "s", source: .embedded), db),
+                check(Sublibrary(name: "n", ruleJSON: "{}", position: 0, createdAt: 0), db),
+                check(TrackCollection(name: "n", createdAt: 0), db),
+                check(CollectionItem(collectionID: 1, trackID: 1, position: 1024), db),
+                check(Queue(name: "n", createdAt: 0), db),
+                check(QueueItem(queueID: 1, trackID: 1, position: 1024), db),
+                check(PlayHistory(trackID: 1, playedAt: 0, msPlayed: 0, completed: true), db),
+            ]
+
+            // `tracks_fts` is an index, not an entity, and has no record type. M4 maintains it
+            // on the write paths (#22).
+            let tables = Set(try Schema.userTableNames(db)).subtracting(["tracks_fts"])
+
+            return (checks.compactMap(\.problem), Set(checks.map(\.table)), tables)
         }
 
         #expect(problems.isEmpty)
+
+        // Not just "each record matches its table" but "every table has a record". A §5 table
+        // added in a later migration without a record type fails here rather than being
+        // noticed whenever someone first tries to query it.
+        #expect(covered == tables)
     }
 
     ///
@@ -200,10 +212,15 @@ struct ModelRoundTripTests {
     @Test("Every record round-trips with every nullable column left nil")
     func minimalRecordsRoundTrip() throws {
         try TestDatabase.withMigratedDatabase { db in
-            // The other half of the round trip. A record that only ever gets tested fully
-            // populated will not catch a non-optional Swift property sitting over a nullable
-            // column — it decodes fine right up until it meets a real library, where a file
-            // with no title is entirely normal.
+            // The other half of the round trip, and the half that caught the CodingKeys
+            // asymmetry documented on `LibraryRecord`: a mismatched key throws on a
+            // non-optional property but decodes silently to nil on an optional one, so a
+            // record only ever tested fully populated hides the failure entirely.
+            //
+            // Every record is here, including the four whose only optional is `id`. Covering
+            // just the ones that currently have optionals would be enough today and would
+            // lapse the moment someone adds one — the coverage rule is "every record, both
+            // directions", not "every record that happens to need it".
             var root = Root(path: "/Music")
             try root.insert(db)
 
@@ -228,6 +245,18 @@ struct ModelRoundTripTests {
             let queueItem = QueueItem(queueID: queue.id!, trackID: track.id!, position: 1024)
             try queueItem.insert(db)
 
+            var sublibrary = Sublibrary(name: "bare", ruleJSON: "{}", position: 1024, createdAt: 0)
+            try sublibrary.insert(db)
+
+            var collection = TrackCollection(name: "bare", createdAt: 0)
+            try collection.insert(db)
+
+            let collectionItem = CollectionItem(collectionID: collection.id!, trackID: track.id!, position: 1024)
+            try collectionItem.insert(db)
+
+            var history = PlayHistory(trackID: track.id!, playedAt: 0, msPlayed: 0, completed: false)
+            try history.insert(db)
+
             #expect(try Root.fetchOne(db, key: root.id!) == root)
             #expect(try Artwork.fetchOne(db, key: artwork.id!) == artwork)
             #expect(try Album.fetchOne(db, key: album.id!) == album)
@@ -236,6 +265,10 @@ struct ModelRoundTripTests {
             #expect(try Track.fetchOne(db, key: track.id!) == track)
             #expect(try Queue.fetchOne(db, key: queue.id!) == queue)
             #expect(try QueueItem.fetchAll(db) == [queueItem])
+            #expect(try Sublibrary.fetchOne(db, key: sublibrary.id!) == sublibrary)
+            #expect(try TrackCollection.fetchOne(db, key: collection.id!) == collection)
+            #expect(try CollectionItem.fetchAll(db) == [collectionItem])
+            #expect(try PlayHistory.fetchOne(db, key: history.id!) == history)
 
             // Spot-check that these really are NULL in the database and not an empty string
             // or a zero that happens to decode back to nil.
@@ -387,18 +420,21 @@ struct ModelRoundTripTests {
 }
 
 ///
-/// Returns a description of how `record`'s encoded columns differ from its table's, or nil if
-/// they match.
+/// The table `record` maps onto, and a description of how its encoded columns differ from that
+/// table's — nil when they match.
 ///
-private func mismatch<R: LibraryRecord>(_ record: R, _ db: Database) throws -> String? {
+private func check<R: LibraryRecord>(_ record: R, _ db: Database) throws -> (table: String, problem: String?) {
     let encoded = Set(try record.databaseDictionary.keys)
     let actual = Set(try db.columns(in: R.databaseTableName).map(\.name))
 
-    guard encoded != actual else { return nil }
+    guard encoded != actual else { return (R.databaseTableName, nil) }
 
-    return """
+    return (
+        R.databaseTableName,
+        """
         \(R.databaseTableName): \
         record encodes \(encoded.subtracting(actual).sorted()) which the table lacks; \
         table has \(actual.subtracting(encoded).sorted()) which the record omits
         """
+    )
 }
